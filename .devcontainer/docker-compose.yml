@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # Container 1: The VS Code Development Environment
+  app:
+    image: mcr.microsoft.com/devcontainers/base:ubuntu-22.04
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+    # Remove network_mode: service:db
+    # It will now use the 'default' network bridge defined below
+
+  # Container 2: The MySQL Database Server
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: mysecretpassword
+      MYSQL_DATABASE: student_db
+      MYSQL_USER: student_user
+      MYSQL_PASSWORD: secretstudentpassword
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ../mysql-init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "3306:3306"
+
+  # Container 3: phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: mysql_gui
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: mysecretpassword
+    depends_on:
+      - db
+
+volumes:
+  mysql-data:

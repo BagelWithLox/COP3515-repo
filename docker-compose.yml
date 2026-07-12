@@ -1,0 +1,40 @@
+services:
+  # Service 1: The MySQL Database Server
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+    ports:
+      - "${DB_PORT}:3306"
+
+    volumes:
+    - db_data:/var/lib/mysql
+    - ./mysql-init:/docker-entrypoint-initdb.d:ro
+
+  # Service 2: The Graphical User Interface (phpMyAdmin)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: mysql_gui
+    restart: always
+
+    ports:
+      - "${GUI_PORT}:80"
+
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+
+    depends_on:
+      - db
+
+# Persistent volume
+volumes:
+  db_data:

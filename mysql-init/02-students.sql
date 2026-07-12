@@ -1,0 +1,23 @@
+INSERT INTO students
+(first_name,last_name,year_in_school,email)
+VALUES
+('John','Johnson','Freshman','john_johnson@usf.edu'),
+('Emily','Johnson','Sophomore','emily_johnson@usf.edu'),
+('Michael','Johnson','Junior','michael_johnson@usf.edu'),
+('Sarah','Davis','Senior','sarah_davis@usf.edu'),
+('James','Wilson','Freshman','james_wilson@usf.edu'),
+('Jessica','Moore','Sophomore','jessica_moore@usf.edu'),
+('Daniel','Taylor','Junior','daniel_taylor@usf.edu'),
+('Ashley','Anderson','Senior','ashley_anderson@usf.edu'),
+('Matthew','Thomas','Freshman','matthew_thomas@usf.edu'),
+('Amanda','Jackson','Sophomore','amanda_jackson@usf.edu'),
+('Christopher','White','Junior','christopher_white@usf.edu'),
+('Stephanie','Harris','Senior','stephanie_harris@usf.edu'),
+('Andrew','Martin','Freshman','andrew_martin@usf.edu'),
+('Lauren','Thompson','Sophomore','lauren_thompson@usf.edu'),
+('Joshua','Garcia','Junior','joshua_garcia@usf.edu'),
+('Megan','Martinez','Senior','megan_martinez@usf.edu'),
+('David','Robinson','Freshman','david_robinson@usf.edu'),
+('Nicole','Clark','Sophomore','nicole_clark@usf.edu'),
+('Ryan','Rodriguez','Junior','ryan_rodriguez@usf.edu'),
+('Rachel','Lewis','Senior','rachel_lewis@usf.edu');

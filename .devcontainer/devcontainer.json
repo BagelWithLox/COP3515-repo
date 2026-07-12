@@ -1,0 +1,31 @@
+// .devcontainer/devcontainer.json
+{
+  "name": "Intro to Databases - MySQL Environment",
+  
+  // Point to the Docker Compose file that manages both containers
+  "dockerComposeFile": "docker-compose.yml",
+  
+  // Tell VS Code which service in the compose file to run inside of
+  "service": "app",
+  
+  // The path inside the 'app' container where the student's files will be mounted
+  "workspaceFolder": "/workspace",
+
+  "customizations": {
+    "vscode": {
+      // Install SQLTools, an incredible GUI database client for VS Code
+      "extensions": [
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-mysql"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+
+  // Ensure the containers shut down cleanly when the student closes VS Code
+  "shutdownAction": "stopCompose",
+  
+  "remoteUser": "vscode"
+}
