@@ -10,7 +10,7 @@
     "overrideCommand": false,
     "updateRemoteUserUID": true,
 
-    "postCreateCommand": "sudo chown -R student:student /workspace && make setup",
+    "postCreateCommand": "sudo chown -R student:student /workspace",
 
     "postStartCommand": "sudo chown -R student:student /workspace && echo '===================================================' && echo ' COP3515 Programming Environment Ready' && echo '===================================================' && gcc --version | head -1 && rustc --version && cargo --version && echo 'Workspace:' && pwd"
 
