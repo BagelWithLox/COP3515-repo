@@ -1,0 +1,13 @@
+target/
+
+*.exe
+
+*.o
+
+*.out
+
+*.obj
+
+*.pdb
+
+.vscode/*.log

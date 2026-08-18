@@ -1,0 +1,259 @@
+{
+    "version": "2.0.0",
+
+    "tasks": [
+
+        //////////////////////////////////////////////////////////////////////
+//
+// C PROGRAMMING
+//
+//////////////////////////////////////////////////////////////////////
+
+{
+    "label": "Build Current C File",
+    "type": "shell",
+    "command": "gcc",
+    "args": [
+        "-g",
+        "${file}",
+        "-o",
+        "${fileDirname}/${fileBasenameNoExtension}"
+    ],
+    "options": {
+        "cwd": "${fileDirname}"
+    },
+    "group": "build",
+    "problemMatcher": [
+        "$gcc"
+    ]
+},
+
+{
+    "label": "Run C Project",
+    "type": "shell",
+    "command": "make",
+    "args": [
+        "run"
+    ],
+    "options": {
+        "cwd": "${fileDirname}"
+    },
+    "dependsOn": "Build C Project"
+},
+
+{
+    "label": "Format C Project",
+    "type": "shell",
+    "command": "make",
+    "args": [
+        "format"
+    ],
+    "options": {
+        "cwd": "${fileDirname}"
+    }
+},
+
+{
+    "label": "Lint C Project",
+    "type": "shell",
+    "command": "make",
+    "args": [
+        "lint"
+    ],
+    "options": {
+        "cwd": "${fileDirname}"
+    }
+},
+
+{
+    "label": "Run Valgrind",
+    "type": "shell",
+    "command": "make",
+    "args": [
+        "valgrind"
+    ],
+    "options": {
+        "cwd": "${fileDirname}"
+    },
+    "dependsOn": "Build C Project"
+},
+
+{
+    "label": "Clean C Project",
+    "type": "shell",
+    "command": "make",
+    "args": [
+        "clean"
+    ],
+    "options": {
+        "cwd": "${fileDirname}"
+    }
+},
+
+        //////////////////////////////////////////////////////////////////////
+        //
+        // RUST PROGRAMMING
+        //
+        //////////////////////////////////////////////////////////////////////
+
+        {
+            "label": "Build Current Rust Project",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "build"
+            ],
+            "options": {
+                "cwd": "${fileDirname}/.."
+            },
+            "group": "build",
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+
+        {
+            "label": "Run Current Rust Project",
+            "type": "shell",
+            "dependsOn": "Build Current Rust Project",
+            "command": "cargo",
+            "args": [
+                "run"
+            ],
+            "options": {
+                "cwd": "${fileDirname}/.."
+            }
+        },
+
+        {
+            "label": "Test Current Rust Project",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "test"
+            ],
+            "options": {
+                "cwd": "${fileDirname}/.."
+            }
+        },
+
+        {
+            "label": "Check Current Rust Project",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "check"
+            ],
+            "options": {
+                "cwd": "${fileDirname}/.."
+            }
+        },
+
+        {
+            "label": "Run Clippy",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "clippy"
+            ],
+            "options": {
+                "cwd": "${fileDirname}/.."
+            }
+        },
+
+        {
+            "label": "Format Current Rust Project",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "fmt"
+            ],
+            "options": {
+                "cwd": "${fileDirname}/.."
+            }
+        },
+
+        {
+            "label": "Build Rust Release",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "build",
+                "--release"
+            ],
+            "options": {
+                "cwd": "${fileDirname}/.."
+            }
+        },
+
+        //////////////////////////////////////////////////////////////////////
+        //
+        // PROJECT-WIDE
+        //
+        //////////////////////////////////////////////////////////////////////
+
+        {
+            "label": "Generate Documentation",
+            "type": "shell",
+            "command": "doxygen"
+        },
+
+        {
+            "label": "Clean C Project",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "clean"
+            ]
+        },
+
+        {
+            "label": "Clean Rust Project",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "clean"
+            ],
+            "options": {
+                "cwd": "${fileDirname}/.."
+            }
+        },
+
+        //////////////////////////////////////////////////////////////////////
+        //
+        // DOCKER
+        //
+        //////////////////////////////////////////////////////////////////////
+
+        {
+            "label": "Rebuild Dev Container",
+            "type": "shell",
+            "command": "docker",
+            "args": [
+                "compose",
+                "build"
+            ]
+        },
+
+        {
+            "label": "Start Dev Container",
+            "type": "shell",
+            "command": "docker",
+            "args": [
+                "compose",
+                "up",
+                "-d"
+            ]
+        },
+
+        {
+            "label": "Stop Dev Container",
+            "type": "shell",
+            "command": "docker",
+            "args": [
+                "compose",
+                "down"
+            ]
+        }
+    ]
+}

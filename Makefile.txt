@@ -1,0 +1,7 @@
+.PHONY: setup
+
+setup:
+	@echo "Configuring COP3515 environment..."
+	git config --global pull.rebase false
+	git config --global core.editor "code --wait"
+	@echo "Setup complete."

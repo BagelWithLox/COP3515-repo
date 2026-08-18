@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Current C File",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${fileDirname}/${fileBasenameNoExtension}",
+            "cwd": "${fileDirname}",
+            "preLaunchTask": "Build Current C File"
+        },
+        {
+            "name": "Debug Current Rust Project",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/${fileDirnameBasename}",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build Current Rust Project",
+            "sourceLanguages": [
+                "rust"
+            ],
+            "initCommands": [
+                "settings set target.disable-aslr false"
+            ]
+        }
+    ]
+}

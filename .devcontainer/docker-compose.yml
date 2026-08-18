@@ -1,44 +1,32 @@
-version: '3.8'
-
 services:
-  # Container 1: The VS Code Development Environment
-  app:
-    image: mcr.microsoft.com/devcontainers/base:ubuntu-22.04
+
+  development:
+
+    container_name: university-programming-environment
+
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+
     volumes:
+
+      # Mount the student's repository into the container
       - ..:/workspace:cached
+
+    working_dir: /workspace
+
+    user: student
+
+    environment:
+
+      # Prevent Rust from prompting during builds
+      - CARGO_TERM_COLOR=always
+
+      # Make compiler output easier to read
+      - TERM=xterm-256color
+
+    stdin_open: true
+
+    tty: true
+
     command: sleep infinity
-    # Remove network_mode: service:db
-    # It will now use the 'default' network bridge defined below
-
-  # Container 2: The MySQL Database Server
-  db:
-    image: mysql:8.0
-    container_name: mysql_db
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: mysecretpassword
-      MYSQL_DATABASE: student_db
-      MYSQL_USER: student_user
-      MYSQL_PASSWORD: secretstudentpassword
-    volumes:
-      - mysql-data:/var/lib/mysql
-      - ../mysql-init:/docker-entrypoint-initdb.d:ro
-    ports:
-      - "3306:3306"
-
-  # Container 3: phpMyAdmin
-  phpmyadmin:
-    image: phpmyadmin:latest
-    container_name: mysql_gui
-    restart: always
-    ports:
-      - "8080:80"
-    environment:
-      PMA_HOST: db
-      PMA_USER: root
-      PMA_PASSWORD: mysecretpassword
-    depends_on:
-      - db
-
-volumes:
-  mysql-data:

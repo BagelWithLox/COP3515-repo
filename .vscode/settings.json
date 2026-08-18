@@ -1,19 +1,137 @@
 {
-    "sqltools.connections": [
-        {
-            "mysqlOptions": {
-                "authProtocol": "default",
-                "enableSsl": "Disabled"
-            },
-            "ssh": "Disabled",
-            "previewLimit": 50,
-            "server": "192.168.68.71",
-            "port": 3306,
-            "driver": "MySQL",
-            "name": "StudentDB",
-            "database": "student_db",
-            "username": "root",
-            "askForPassword": true
-        }
-    ]
+    ////////////////////////////////////////////////////////////////////////////
+    // General Editor Settings
+    ////////////////////////////////////////////////////////////////////////////
+
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.wordWrap": "off",
+    "editor.minimap.enabled": true,
+    "editor.rulers": [
+        80,
+        100
+    ],
+    "editor.renderWhitespace": "selection",
+    "editor.renderControlCharacters": false,
+    "editor.codeActionsOnSave": {
+        "source.fixAll": "explicit"
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Files
+    ////////////////////////////////////////////////////////////////////////////
+
+    "files.autoSave": "off",
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.encoding": "utf8",
+    "files.associations": {
+        "*.h": "c",
+        "*.hpp": "cpp",
+        "*.tpp": "cpp"
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Terminal
+    ////////////////////////////////////////////////////////////////////////////
+
+    "terminal.integrated.defaultProfile.linux": "bash",
+    "terminal.integrated.scrollback": 10000,
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Git
+    ////////////////////////////////////////////////////////////////////////////
+
+    "git.autofetch": true,
+    "git.confirmSync": false,
+    "git.enableSmartCommit": true,
+
+    ////////////////////////////////////////////////////////////////////////////
+    // C / C++
+    ////////////////////////////////////////////////////////////////////////////
+
+    "C_Cpp.intelliSenseEngine": "disabled",
+
+    "clangd.path": "/usr/bin/clangd",
+
+    "clangd.arguments": [
+        "--background-index",
+        "--clang-tidy",
+        "--completion-style=detailed",
+        "--header-insertion=iwyu",
+        "--all-scopes-completion"
+    ],
+
+    "[c]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    },
+
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Rust
+    ////////////////////////////////////////////////////////////////////////////
+
+    "rust-analyzer.check.command": "clippy",
+
+    "rust-analyzer.cargo.autoreload": true,
+
+    "rust-analyzer.cargo.buildScripts.enable": true,
+
+    "rust-analyzer.procMacro.enable": true,
+
+    "rust-analyzer.inlayHints.bindingModeHints.enable": true,
+
+    "rust-analyzer.inlayHints.closingBraceHints.enable": true,
+
+    "rust-analyzer.inlayHints.parameterHints.enable": true,
+
+    "rust-analyzer.inlayHints.typeHints.enable": true,
+
+    "[rust]": {
+        "editor.defaultFormatter": "rust-lang.rust-analyzer"
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    // LLDB
+    ////////////////////////////////////////////////////////////////////////////
+
+    "lldb.consoleMode": "commands",
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Makefile
+    ////////////////////////////////////////////////////////////////////////////
+
+    "makefile.configureOnOpen": false,
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Explorer
+    ////////////////////////////////////////////////////////////////////////////
+
+    "explorer.confirmDelete": false,
+    "explorer.confirmDragAndDrop": false,
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Docker
+    ////////////////////////////////////////////////////////////////////////////
+
+    "docker.showStartPage": false,
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Miscellaneous
+    ////////////////////////////////////////////////////////////////////////////
+
+    "breadcrumbs.enabled": true,
+
+    "workbench.startupEditor": "none",
+
+    "workbench.editor.enablePreview": false,
+
+    "window.restoreWindows": "all",
+
+    "telemetry.telemetryLevel": "off"
 }

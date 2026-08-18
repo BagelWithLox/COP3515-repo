@@ -1,31 +1,82 @@
-// .devcontainer/devcontainer.json
 {
-  "name": "Intro to Databases - MySQL Environment",
-  
-  // Point to the Docker Compose file that manages both containers
-  "dockerComposeFile": "docker-compose.yml",
-  
-  // Tell VS Code which service in the compose file to run inside of
-  "service": "app",
-  
-  // The path inside the 'app' container where the student's files will be mounted
-  "workspaceFolder": "/workspace",
+    "name": "COP3515 Programming Environment",
+    "dockerComposeFile": [
+        "docker-compose.yml"
+    ],
+    "service": "development",
+    "workspaceFolder": "/workspace",
+    "remoteUser": "student",
+    "shutdownAction": "stopCompose",
+    "overrideCommand": false,
+    "updateRemoteUserUID": true,
 
-  "customizations": {
-    "vscode": {
-      // Install SQLTools, an incredible GUI database client for VS Code
-      "extensions": [
-        "mtxr.sqltools",
-        "mtxr.sqltools-driver-mysql"
-      ],
-      "settings": {
-        "terminal.integrated.defaultProfile.linux": "bash"
-      }
+    "postCreateCommand": "sudo chown -R student:student /workspace && make setup",
+
+    "postStartCommand": "sudo chown -R student:student /workspace && echo '===================================================' && echo ' COP3515 Programming Environment Ready' && echo '===================================================' && gcc --version | head -1 && rustc --version && cargo --version && echo 'Workspace:' && pwd"
+
+    "customizations": {
+
+        "vscode": {
+
+            "settings": {
+
+                "terminal.integrated.defaultProfile.linux": "bash",
+
+                "editor.formatOnSave": true,
+
+                "editor.tabSize": 4,
+
+                "editor.rulers": [
+                    80,
+                    100
+                ],
+
+                "files.trimTrailingWhitespace": true,
+
+                "files.insertFinalNewline": true,
+
+                "C_Cpp.default.configurationProvider": "llvm-vs-code-extensions.vscode-clangd",
+
+                "clangd.arguments": [
+                    "--background-index",
+                    "--clang-tidy"
+                ],
+
+                "rust-analyzer.check.command": "clippy",
+
+                "rust-analyzer.cargo.buildScripts.enable": true,
+
+                "rust-analyzer.procMacro.enable": true,
+
+                "rust-analyzer.cargo.autoreload": true,
+
+                "terminal.integrated.scrollback": 10000
+            },
+
+            "extensions": [
+
+                "ms-vscode.cpptools",
+
+                "llvm-vs-code-extensions.vscode-clangd",
+
+                "vadimcn.vscode-lldb",
+
+                "rust-lang.rust-analyzer",
+
+                "tamasfe.even-better-toml",
+
+                "ms-vscode.makefile-tools",
+
+                "ms-vscode.cmake-tools",
+
+                "ms-azuretools.vscode-docker",
+
+                "eamodio.gitlens",
+
+                "github.copilot",
+
+                "github.copilot-chat"
+            ]
+        }
     }
-  },
-
-  // Ensure the containers shut down cleanly when the student closes VS Code
-  "shutdownAction": "stopCompose",
-  
-  "remoteUser": "vscode"
 }
