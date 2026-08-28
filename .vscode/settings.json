@@ -100,7 +100,8 @@
     /////////////////////////////////////////////////
     // code runner
     /////////////////////////////////////////////////
+    "code-runner.runInTerminal": true,
     "code-runner.executorMap": {
-        "c": "cd \"$dir\" && gcc \"$fileName\" -o \"program\" && ./program"
+        "c": "cd $dir && gcc \"$fileName\" -o program && ./program"
     }
 }
