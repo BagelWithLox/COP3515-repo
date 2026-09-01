@@ -1,14 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 
-int main(void) {
+int main() {
   char firstName[50];
   int age;
-  double monthlyFee;
+  double monthlyFee; // double for 2 points of precision
 
   // --- Input Section ---
   printf("First name: ");
-  scanf("%49s", firstName);
+  scanf("%s", firstName);
 
   printf("Age: ");
   scanf("%d", &age);
@@ -16,10 +16,31 @@ int main(void) {
   printf("Monthly membership price: $");
   scanf("%lf", &monthlyFee);
 
+  // input validation
+  if (strlen(firstName) == 0) {
+    printf("Error: First name cannot be empty.\n");
+    return 1;
+  }
+
+  if (strlen(firstName) >= 50) {
+    printf("Error: First name cannot exceed 50 characters.\n");
+    return 1;
+  }
+
+  if (age < 0) {
+    printf("Error: Age cannot be negative.\n");
+    return 1;
+  }
+
+  if (monthlyFee <= 0) {
+    printf("Error: Monthly membership price must be greater than 0.\n");
+    return 1;
+  }
+
   // --- Receipt Output Section ---
   printf("\n");
   printf("========================================\n");
-  printf("            GYM MEMBERSHIP RECEIPT       \n");
+  printf("           GYM MEMBERSHIP RECEIPT       \n");
   printf("========================================\n");
   printf("Customer Name:      %s\n", firstName);
   printf("Customer Age:       %d\n", age);
