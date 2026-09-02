@@ -1,40 +1,82 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
 int main() {
+
   char firstName[50];
   int age;
-  double monthlyFee; // double for 2 points of precision
+  double monthlyFee;
 
-  // --- Input Section ---
-  printf("First name: ");
-  scanf("%s", firstName);
+  // --- First Name Input ---
+  while (true) {
+    printf("First name: ");
 
-  printf("Age: ");
-  scanf("%d", &age);
+    fgets(firstName, sizeof(firstName), stdin);
 
-  printf("Monthly membership price: $");
-  scanf("%lf", &monthlyFee);
+    // Check if the input was too long
+    if (strchr(firstName, '\n') == NULL) {
+      printf("Error: First name cannot exceed 49 characters.\n");
 
-  // input validation
-  if (strlen(firstName) == 0) {
-    printf("Error: First name cannot be empty.\n");
-    return 1;
+      // Clear the rest of the input
+      while (getchar() != '\n')
+        ;
+
+      continue;
+    }
+
+    // Remove the newline
+    firstName[strcspn(firstName, "\n")] = '\0';
+
+    // Check if the name is empty
+    if (strlen(firstName) == 0) {
+      printf("Error: First name cannot be empty.\n");
+      continue;
+    }
+
+    break;
   }
 
-  if (strlen(firstName) >= 50) {
-    printf("Error: First name cannot exceed 50 characters.\n");
-    return 1;
+  // --- Age Input ---
+  while (true) {
+    printf("Age: ");
+
+    if (scanf("%d", &age) != 1) {
+      printf("Error: Please enter a valid age.\n");
+
+      // Clear invalid input
+      while (getchar() != '\n')
+        ;
+      continue;
+    }
+
+    if (age < 18) {
+      printf("Error: Age must be at least 18.\n");
+      continue;
+    }
+
+    break;
   }
 
-  if (age < 0) {
-    printf("Error: Age cannot be negative.\n");
-    return 1;
-  }
+  // --- Monthly Fee Input ---
+  while (true) {
+    printf("Monthly membership price: $");
 
-  if (monthlyFee <= 0) {
-    printf("Error: Monthly membership price must be greater than 0.\n");
-    return 1;
+    if (scanf("%lf", &monthlyFee) != 1) {
+      printf("Error: Please enter a valid price.\n");
+
+      // Clear invalid input
+      while (getchar() != '\n')
+        ;
+      continue;
+    }
+
+    if (monthlyFee <= 0) {
+      printf("Error: Monthly membership price must be greater than 0.\n");
+      continue;
+    }
+
+    break;
   }
 
   // --- Receipt Output Section ---
