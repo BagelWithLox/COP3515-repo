@@ -39,16 +39,26 @@ int main() {
 
   // --- Age Input ---
   while (true) {
+    double ageInput;
+
     printf("Age: ");
 
-    if (scanf("%d", &age) != 1) {
+    if (scanf("%lf", &ageInput) != 1) {
       printf("Error: Please enter a valid age.\n");
 
       // Clear invalid input
       while (getchar() != '\n')
         ;
+
       continue;
     }
+
+    if (ageInput != (int)ageInput) {
+      printf("Error: Age must be a whole number.\n");
+      continue;
+    }
+
+    age = (int)ageInput;
 
     if (age < 18) {
       printf("Error: Age must be at least 18.\n");
