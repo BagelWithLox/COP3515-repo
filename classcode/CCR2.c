@@ -1,6 +1,5 @@
-/*int overflow when inputting -9999...check later*/
-
 #include <stdio.h>
+
 int main() {
 
   int sales[5];
@@ -9,6 +8,7 @@ int main() {
   int lowest;
   int average;
   int valid;
+  int hasNumber;
   char input[50];
 
   /* Enter sales for each hour */
@@ -23,12 +23,19 @@ int main() {
 
       /* Check that every character is a number */
       valid = 1;
+      hasNumber = 0;
 
       for (int j = 0; input[j] != '\0' && input[j] != '\n'; j++) {
 
-        if (input[j] < '0' || input[j] > '9') {
+        if (input[j] >= '0' && input[j] <= '9') {
+          hasNumber = 1;
+        } else {
           valid = 0;
         }
+      }
+      /*reject empty input*/
+      if (hasNumber == 0) {
+        valid = 0;
       }
 
       if (valid == 1) {
