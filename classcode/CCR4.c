@@ -80,6 +80,11 @@ int main(void) {
 
   while ((c = fgetc(inputFile)) != EOF && !errorHappened) {
 
+    if ((char)c == '\r') {
+      /* Ignore carriage return characters (for Windows files). */
+      continue;
+    }
+
     if ((char)c == '\n') {
       /* End of a line: only write it out if it had content
          (this is how blank lines get skipped). */
