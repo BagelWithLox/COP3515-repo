@@ -9,73 +9,43 @@
     "shutdownAction": "stopCompose",
     "overrideCommand": false,
     "updateRemoteUserUID": true,
-
     "postCreateCommand": "sudo chown -R student:student /workspace",
-
-    "postStartCommand": "sudo chown -R student:student /workspace && echo '===================================================' && echo ' COP3515 Programming Environment Ready' && echo '===================================================' && gcc --version | head -1 && rustc --version && cargo --version && echo 'Workspace:' && pwd"
-
-    "customizations": {
-
+    "postStartCommand": "sudo chown -R student:student /workspace && echo '===================================================' && echo ' COP3515 Programming Environment Ready' && echo '===================================================' && gcc --version | head -1 && rustc --version && cargo --version && echo 'Workspace:' && pwd""customizations": {
         "vscode": {
-
             "settings": {
-
                 "terminal.integrated.defaultProfile.linux": "bash",
-
                 "editor.formatOnSave": true,
-
                 "editor.tabSize": 4,
-
                 "editor.rulers": [
                     80,
                     100
                 ],
-
                 "files.trimTrailingWhitespace": true,
-
                 "files.insertFinalNewline": true,
-
                 "C_Cpp.default.configurationProvider": "llvm-vs-code-extensions.vscode-clangd",
-
                 "clangd.arguments": [
                     "--background-index",
                     "--clang-tidy"
                 ],
-
                 "rust-analyzer.check.command": "clippy",
-
                 "rust-analyzer.cargo.buildScripts.enable": true,
-
                 "rust-analyzer.procMacro.enable": true,
-
                 "rust-analyzer.cargo.autoreload": true,
-
                 "terminal.integrated.scrollback": 10000
             },
-
             "extensions": [
-
                 "ms-vscode.cpptools",
-
                 "llvm-vs-code-extensions.vscode-clangd",
-
                 "vadimcn.vscode-lldb",
-
                 "rust-lang.rust-analyzer",
-
                 "tamasfe.even-better-toml",
-
                 "ms-vscode.makefile-tools",
-
                 "ms-vscode.cmake-tools",
-
                 "ms-azuretools.vscode-docker",
-
                 "eamodio.gitlens",
-
                 "github.copilot",
-
-                "github.copilot-chat"
+                "github.copilot-chat",
+                "formulahendry.code-runner"
             ]
         }
     }
