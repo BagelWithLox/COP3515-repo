@@ -1,17 +1,27 @@
-/*Student Information Management System (SIMS)
-COP 3515 - Advanced Program Design
-Client Change Request: project 2 (builds on project 1)*/
+/* ============================================================
+   Student Information Management System (SIMS)
+   COP 3515 - Advanced Program Design
+   Client Change Request: part 3 (builds project1-1 and project1-2)
+   ============================================================
+*/
 
 #include <stdbool.h>
 #include <stdio.h>
+
+enum AcademicStanding {
+  HONORS,
+  GOOD_STANDING,
+  ACADEMIC_PROBATION,
+  ACADEMIC_SUSPENSION
+};
 
 int main(void) {
   /* ---- Constants describing this program ---- */
   const char COURSE_TITLE[] = "Student Information Management System";
   const char PROGRAMMER_NAME[] = "Samuel Shivarig";
-  const char VERSION_NUMBER[] = "2.0";
+  const char VERSION_NUMBER[] = "3.0";
 
-  /* ---- Variables to hold the student's data---- */
+  /* ---- Variables to hold the student's data (CCR-001) ---- */
   long studentID;
   char studentName[50];
   double gpa;
@@ -20,7 +30,10 @@ int main(void) {
   bool gpaIsValid;
   char nextChar; /* holds the character right after the ID digits */
 
-  /* ---- Variables to hold the course grades ---- */
+  /* ---- Variable to hold academic standing (CCR-003) ---- */
+  enum AcademicStanding standing;
+
+  /* ---- Variables to hold the course grades (CCR-002) ---- */
   double grades[5];
   bool gradesAreValid;
   bool gradeOk;
@@ -91,27 +104,45 @@ int main(void) {
     return 1;
   }
 
-  /* ---- Collect GPA (must be numeric and not negative) ---- */
+  /* ---- Collect GPA (must be numeric and between 0.00 and 4.00) ----
+     CCR-003 tightens this from CCR-001's "not negative" check to
+     the full valid range, and defines the exact error message
+     (see Example 5 in the CCR). */
   printf("Current GPA: ");
   gpaIsValid = (scanf("%lf", &gpa) == 1);
 
+  if (gpaIsValid && (gpa < 0.00 || gpa > 4.00)) {
+    gpaIsValid = false;
+  }
+
   if (!gpaIsValid) {
-    printf("\nError: GPA must be a number.\n");
+    printf("\nERROR\n");
+    printf("Invalid GPA entered.\n");
+    printf("GPA must be between 0.00 and 4.00.\n");
     printf("Program terminated.\n");
     return 1;
   }
 
-  if (gpa < 0) {
-    printf("\nError: GPA cannot be negative.\n");
-    printf("Program terminated.\n");
-    return 1;
+  /* ---- Determine academic standing (CCR-003) ----
+     Cascading from the top down avoids any gap between the
+     table's listed bands (see DESIGN NOTE at the top of this
+     file). Since gpa is already confirmed to be in [0.00, 4.00],
+     the final else covers Academic Suspension correctly. */
+  if (gpa >= 3.50) {
+    standing = HONORS;
+  } else if (gpa >= 2.00) {
+    standing = GOOD_STANDING;
+  } else if (gpa >= 1.00) {
+    standing = ACADEMIC_PROBATION;
+  } else {
+    standing = ACADEMIC_SUSPENSION;
   }
 
   /* ---- Collect the five course grades (CCR-002) ----
      Grades are whole or fractional numbers on a 0-100 scale (see
      "Answers to Questions for the Customer"). Each grade gets one
-     re-prompt if the first entry is invalid (see the trade-off
-     note at the top of this file), then is rejected outright. */
+     re-prompt if the first entry is invalid, then is rejected
+     outright. */
   printf("\nCourse Grades\n");
   gradesAreValid = true;
 
@@ -238,23 +269,40 @@ int main(void) {
   if (grades[4] < lowestGrade)
     lowestGrade = grades[4];
 
-  /* ---- Display formatted summary (CCR-001 + CCR-002 together) ---- */
+  /* ---- Display formatted summary (CCR-001 + CCR-002 + CCR-003) ---- */
   printf("\n");
   printf("Student Summary\n");
-  printf("%-14s: %ld\n", "Student ID", studentID);
-  printf("%-14s: %s\n", "Student Name", studentName);
-  printf("%-14s: %.2lf\n", "Current GPA", gpa);
+  printf("%-18s: %ld\n", "Student ID", studentID);
+  printf("%-18s: %s\n", "Student Name", studentName);
+  printf("%-18s: %.2lf\n", "Current GPA", gpa);
+
+  printf("%-18s: ", "Academic Standing");
+  switch (standing) {
+  case HONORS:
+    printf("Honors\n");
+    break;
+  case GOOD_STANDING:
+    printf("Good Standing\n");
+    break;
+  case ACADEMIC_PROBATION:
+    printf("Academic Probation\n");
+    break;
+  case ACADEMIC_SUSPENSION:
+    printf("Academic Suspension\n");
+    break;
+  }
+
   printf("----------------------------------------\n");
   printf("Course Grades\n");
-  printf("%-14s: %.2f\n", "Course 1", grades[0]);
-  printf("%-14s: %.2f\n", "Course 2", grades[1]);
-  printf("%-14s: %.2f\n", "Course 3", grades[2]);
-  printf("%-14s: %.2f\n", "Course 4", grades[3]);
-  printf("%-14s: %.2f\n", "Course 5", grades[4]);
+  printf("%-18s: %.2f\n", "Course 1", grades[0]);
+  printf("%-18s: %.2f\n", "Course 2", grades[1]);
+  printf("%-18s: %.2f\n", "Course 3", grades[2]);
+  printf("%-18s: %.2f\n", "Course 4", grades[3]);
+  printf("%-18s: %.2f\n", "Course 5", grades[4]);
   printf("----------------------------------------\n");
-  printf("%-14s: %.2lf\n", "Average Grade", averageGrade);
-  printf("%-14s: %.2f\n", "Highest Grade", highestGrade);
-  printf("%-14s: %.2f\n", "Lowest Grade", lowestGrade);
+  printf("%-18s: %.2lf\n", "Average Grade", averageGrade);
+  printf("%-18s: %.2f\n", "Highest Grade", highestGrade);
+  printf("%-18s: %.2f\n", "Lowest Grade", lowestGrade);
 
   return 0;
 }
