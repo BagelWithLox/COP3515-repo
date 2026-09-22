@@ -83,7 +83,7 @@ double getOrderAmount(void) {
   int result;
 
   while (!valid) {
-    printf("Enter order amount: $");
+    printf("Enter order amount in $: ");
     result = scanf("%lf", &amount);
 
     if (result != 1) {
@@ -96,6 +96,7 @@ double getOrderAmount(void) {
              MAX_ORDER);
     } else {
       valid = 1;
+      clearInputBuffer(); // Clear any leftover input after a successful read
     }
   }
 
@@ -119,6 +120,7 @@ char getDiscountChoice(void) {
 
     if (choice == 'Y' || choice == 'N') {
       valid = 1;
+      clearInputBuffer();
     } else {
       printf("Error: Please enter Y or N.\n");
     }
@@ -134,7 +136,7 @@ double getDiscountPercent(void) {
   int result;
 
   while (!valid) {
-    printf("Enter discount percentage (e.g., 10 for 10%%): ");
+    printf("Enter discount percentage (10 for 10%%): ");
     result = scanf("%lf", &percent);
 
     if (result != 1) {
@@ -143,11 +145,14 @@ double getDiscountPercent(void) {
     } else if (percent < 0) {
       printf(
           "Error: Discount percentage cannot be negative. Please try again.\n");
+      clearInputBuffer();
     } else if (percent > 100) {
       printf("Error: Discount percentage cannot exceed 100%%. Please try "
              "again.\n");
+      clearInputBuffer();
     } else {
       valid = 1;
+      clearInputBuffer();
     }
   }
 
