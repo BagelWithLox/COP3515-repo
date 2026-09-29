@@ -1,12 +1,70 @@
 /* ============================================================
    Student Information Management System (SIMS)
    COP 3515 - Advanced Program Design
-   Client Change Request: part 3 (builds project1-1 and project1-2)
+   Client Change Request: CCR-004 (builds on CCR-001 through CCR-003)
    ============================================================
-*/
+   SCOPE / FEATURE AUDIT (checked against CCR-004):
+     Newly permitted this sprint: file processing (fopen/fclose),
+     formatted file I/O (fprintf/fscanf), character processing
+     (strcmp, used below to compare the recovered name and
+     standing text), and type casting. Arrays, enum, switch,
+     if-statements, and logical operators carry forward from
+     CCR-002/CCR-003.
+     Still out of scope: multiple students, user-defined
+     functions, menus, searching/editing saved records, binary
+     files, encryption, databases, dynamic memory allocation,
+     multiple data files. Loops are still not listed as permitted
+     (the CCR's own "Looking Ahead" section says loops are a
+     future addition), so the codebase stays loop-free.
+     FILE * is used only because file processing is explicitly
+     permitted this week and is impossible without it; no other
+     pointer variables are introduced (e.g. the recovered academic
+     standing is stored as a char array, not a char *, same as
+     studentName always has been).
+
+     DESIGN NOTES:
+       - Save-then-reload happens automatically in the same run,
+         matching the CCR's Example 1 exactly: the program writes
+         student_records.txt, then immediately reads it back and
+         displays it as a "Recovered Student Record" separate
+         from the normal CCR-001/002/003 report.
+       - Business requirement #7 (let an employee verify the
+         recovered data matches the original) is implemented as
+         an actual in-program comparison, not just two printouts
+         for a human to eyeball. GPA and grades are compared using
+         type casting ((long)(value * 100 + 0.5)) instead of raw
+         double equality, to avoid floating-point rounding issues
+         - this is the newly permitted "type casting" concept.
+         Name and academic standing are compared with strcmp(),
+         using this week's newly permitted character processing.
+       - Academic standing is written to the file as plain text
+         (e.g. "Honors") and read back as text, not recalculated
+         from the recovered GPA. Recalculating would make the
+         standing always match by definition and defeat the point
+         of a real verification step (see Question 8 below).
+
+     ASSUMPTIONS (no further customer answers supplied this
+     sprint, so these are my own reasonable defaults per the
+     submission's "Assumptions" requirement):
+       - File name is fixed as "student_records.txt", per the
+         CCR's own error-message example.
+       - The file is overwritten (not appended) each run, since
+         the CCR states the system only manages one student at a
+         time - appending would just duplicate that one record.
+       - The program always reads the file back immediately after
+         saving, matching Example 1.
+       - No blank lines are written between fields, since fscanf
+         does not need them and it keeps the file simple to parse.
+       - If the file cannot be opened at all, the program shows
+         the CCR's exact Example 3 error and exits. If the file
+         opens but its contents are incomplete or malformed, a
+         separate "corrupted file" message is shown instead, to
+         directly answer Question 9 about invalid/incomplete data.
+   ============================================================ */
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 enum AcademicStanding {
   HONORS,
@@ -19,7 +77,8 @@ int main(void) {
   /* ---- Constants describing this program ---- */
   const char COURSE_TITLE[] = "Student Information Management System";
   const char PROGRAMMER_NAME[] = "Samuel Shivarig";
-  const char VERSION_NUMBER[] = "3.0";
+  const char VERSION_NUMBER[] = "4.0";
+  const char FILE_NAME[] = "student_records.txt";
 
   /* ---- Variables to hold the student's data (CCR-001) ---- */
   long studentID;
@@ -40,6 +99,21 @@ int main(void) {
   double averageGrade;
   double highestGrade;
   double lowestGrade;
+
+  /* ---- Variables for saving/loading the record (CCR-004) ---- */
+  FILE *filePtr;
+  long loadedID;
+  char loadedName[50];
+  double loadedGPA;
+  char loadedStanding[30];
+  double loadedGrades[5];
+  bool loadOk;
+  bool idMatches;
+  bool nameMatches;
+  bool gpaMatches;
+  bool standingMatches;
+  bool gradesMatch;
+  bool allMatch;
 
   /* ---- Program header / welcome message ---- */
   printf("----------------------------------------\n");
@@ -303,6 +377,166 @@ int main(void) {
   printf("%-18s: %.2lf\n", "Average Grade", averageGrade);
   printf("%-18s: %.2f\n", "Highest Grade", highestGrade);
   printf("%-18s: %.2f\n", "Lowest Grade", lowestGrade);
+
+  /* ---- Save the student record to a text file (CCR-004) ---- */
+  filePtr = fopen(FILE_NAME, "w");
+  if (filePtr == NULL) {
+    printf("\nERROR\n");
+    printf("Unable to open %s for writing.\n", FILE_NAME);
+    printf(
+        "Please verify that you have permission to write to this location.\n");
+    return 1;
+  }
+
+  fprintf(filePtr, "%ld\n", studentID);
+  fprintf(filePtr, "%s\n", studentName);
+  fprintf(filePtr, "%.2lf\n", gpa);
+
+  switch (standing) {
+  case HONORS:
+    fprintf(filePtr, "Honors\n");
+    break;
+  case GOOD_STANDING:
+    fprintf(filePtr, "Good Standing\n");
+    break;
+  case ACADEMIC_PROBATION:
+    fprintf(filePtr, "Academic Probation\n");
+    break;
+  case ACADEMIC_SUSPENSION:
+    fprintf(filePtr, "Academic Suspension\n");
+    break;
+  }
+
+  fprintf(filePtr, "%.2f\n", grades[0]);
+  fprintf(filePtr, "%.2f\n", grades[1]);
+  fprintf(filePtr, "%.2f\n", grades[2]);
+  fprintf(filePtr, "%.2f\n", grades[3]);
+  fprintf(filePtr, "%.2f\n", grades[4]);
+
+  fclose(filePtr);
+
+  printf("\nStudent information successfully saved.\n");
+
+  /* ---- Read the student record back from the file (CCR-004) ----
+     The file is always read back immediately after saving, to
+     match the CCR's Example 1. If the file cannot be opened at
+     all, this shows the CCR's exact Example 3 error message. */
+  printf("Reading student information...\n");
+
+  filePtr = fopen(FILE_NAME, "r");
+  if (filePtr == NULL) {
+    printf("\nERROR\n");
+    printf("Unable to open %s\n", FILE_NAME);
+    printf("Please verify that the file exists and that you have permission to "
+           "access it.\n");
+    return 1;
+  }
+
+  loadOk = (fscanf(filePtr, "%ld", &loadedID) == 1);
+  if (fscanf(filePtr, " %49[^\n]", loadedName) != 1)
+    loadOk = false;
+  if (fscanf(filePtr, "%lf", &loadedGPA) != 1)
+    loadOk = false;
+  if (fscanf(filePtr, " %29[^\n]", loadedStanding) != 1)
+    loadOk = false;
+  if (fscanf(filePtr, "%lf", &loadedGrades[0]) != 1)
+    loadOk = false;
+  if (fscanf(filePtr, "%lf", &loadedGrades[1]) != 1)
+    loadOk = false;
+  if (fscanf(filePtr, "%lf", &loadedGrades[2]) != 1)
+    loadOk = false;
+  if (fscanf(filePtr, "%lf", &loadedGrades[3]) != 1)
+    loadOk = false;
+  if (fscanf(filePtr, "%lf", &loadedGrades[4]) != 1)
+    loadOk = false;
+
+  fclose(filePtr);
+
+  if (!loadOk) {
+    printf("\nERROR\n");
+    printf("The data file exists but could not be read correctly.\n");
+    printf("The file may be corrupted or incomplete.\n");
+    return 1;
+  }
+
+  printf("File successfully loaded.\n");
+
+  /* ---- Display the recovered record (CCR-004) ----
+     Formatted to match the CCR's Example 1 layout for this
+     section specifically, which is simpler than the live report
+     above (no aligned label columns, grades listed as bare
+     numbers). */
+  printf("\nRecovered Student Record\n");
+  printf("----------------------------------------\n");
+  printf("%s\n", COURSE_TITLE);
+  printf("Version %s\n", VERSION_NUMBER);
+  printf("----------------------------------------\n");
+  printf("Student ID : %ld\n", loadedID);
+  printf("Student Name : %s\n", loadedName);
+  printf("Current GPA : %.2lf\n", loadedGPA);
+  printf("Academic Standing : %s\n", loadedStanding);
+  printf("Course Grades\n");
+  printf("%.2f\n", loadedGrades[0]);
+  printf("%.2f\n", loadedGrades[1]);
+  printf("%.2f\n", loadedGrades[2]);
+  printf("%.2f\n", loadedGrades[3]);
+  printf("%.2f\n", loadedGrades[4]);
+  printf("Average Grade : %.2lf\n",
+         (loadedGrades[0] + loadedGrades[1] + loadedGrades[2] +
+          loadedGrades[3] + loadedGrades[4]) /
+             5.0);
+  printf("Highest Grade : %.2f\n", highestGrade);
+  printf("Lowest Grade : %.2f\n", lowestGrade);
+
+  /* ---- Verify the recovered data matches the original (CCR-004) ----
+     GPA and grades use type casting to compare as whole hundredths
+     instead of raw doubles, avoiding floating-point rounding
+     issues. Name and standing use strcmp() for exact text match. */
+  idMatches = (studentID == loadedID);
+  nameMatches = (strcmp(studentName, loadedName) == 0);
+  gpaMatches = ((long)(gpa * 100 + 0.5) == (long)(loadedGPA * 100 + 0.5));
+
+  switch (standing) {
+  case HONORS:
+    standingMatches = (strcmp(loadedStanding, "Honors") == 0);
+    break;
+  case GOOD_STANDING:
+    standingMatches = (strcmp(loadedStanding, "Good Standing") == 0);
+    break;
+  case ACADEMIC_PROBATION:
+    standingMatches = (strcmp(loadedStanding, "Academic Probation") == 0);
+    break;
+  case ACADEMIC_SUSPENSION:
+    standingMatches = (strcmp(loadedStanding, "Academic Suspension") == 0);
+    break;
+  default:
+    standingMatches = false;
+    break;
+  }
+
+  gradesMatch = true;
+  if ((long)(grades[0] * 100 + 0.5) != (long)(loadedGrades[0] * 100 + 0.5))
+    gradesMatch = false;
+  if ((long)(grades[1] * 100 + 0.5) != (long)(loadedGrades[1] * 100 + 0.5))
+    gradesMatch = false;
+  if ((long)(grades[2] * 100 + 0.5) != (long)(loadedGrades[2] * 100 + 0.5))
+    gradesMatch = false;
+  if ((long)(grades[3] * 100 + 0.5) != (long)(loadedGrades[3] * 100 + 0.5))
+    gradesMatch = false;
+  if ((long)(grades[4] * 100 + 0.5) != (long)(loadedGrades[4] * 100 + 0.5))
+    gradesMatch = false;
+
+  allMatch =
+      +idMatches && nameMatches && gpaMatches && standingMatches && gradesMatch;
+
+  printf("\n----------------------------------------\n");
+  printf("Verification\n");
+  printf("----------------------------------------\n");
+  if (allMatch) {
+    printf("The recovered data matches the original entry exactly.\n");
+  } else {
+    printf("WARNING: The recovered data does NOT match the original entry.\n");
+  }
 
   return 0;
 }
