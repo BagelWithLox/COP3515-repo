@@ -5,7 +5,8 @@
  * Reads the length, width and height (in inches) of one shipping box,
  * checks them against the shipping limits, and prints the volume and
  * surface area. Calculations are not rounded; results are displayed
- * with 2 decimal places.
+ * with 2 decimal places (more only when a small value would otherwise
+ * show as 0.00).
  *
  * Future versions will add shipping cost calculations. Keep the
  * calculation functions free of input/output so they can be reused.
@@ -75,10 +76,25 @@ int prompt_dimension(const char *label, double max, double *value) {
 
 /* ---------- Output ---------- */
 
-/* Displays a value with 2 decimal places (display only; the
-   stored value is not rounded). */
+/* Returns the number of decimal places to display: 2 normally, but
+   more for small values (under 0.01) so they do not show as 0.00.
+   Small values are shown with 2 significant digits. */
+int display_decimals(double value) {
+  int places = 2;
+  double scale = 100.0; /* 10 to the power of places */
+
+  if (value > 0.0 && value < 0.01) {
+    while (places < 30 && value * scale < 9.999999) {
+      places++;
+      scale = scale * 10.0;
+    }
+  }
+  return places;
+}
+
+/* Display only; the stored value is not rounded. */
 void print_value(const char *label, double value, const char *unit) {
-  printf("%s : %.2f %s\n", label, value, unit);
+  printf("%s : %.*f %s\n", label, display_decimals(value), value, unit);
 }
 
 void print_report(double length, double width, double height, double volume,

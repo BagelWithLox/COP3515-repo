@@ -1,65 +1,55 @@
 /* ============================================================
    Student Information Management System (SIMS)
    COP 3515 - Advanced Program Design
-   Client Change Request: CCR-004 (builds on CCR-001 through CCR-003)
+   Client Change Request: CCR-005 (builds on CCR-001 through CCR-004)
    ============================================================
-   SCOPE / FEATURE AUDIT (checked against CCR-004):
-     Newly permitted this sprint: file processing (fopen/fclose),
-     formatted file I/O (fprintf/fscanf), character processing
-     (strcmp, used below to compare the recovered name and
-     standing text), and type casting. Arrays, enum, switch,
-     if-statements, and logical operators carry forward from
-     CCR-002/CCR-003.
-     Still out of scope: multiple students, user-defined
-     functions, menus, searching/editing saved records, binary
-     files, encryption, databases, dynamic memory allocation,
-     multiple data files. Loops are still not listed as permitted
-     (the CCR's own "Looking Ahead" section says loops are a
-     future addition), so the codebase stays loop-free.
-     FILE * is used only because file processing is explicitly
-     permitted this week and is impossible without it; no other
-     pointer variables are introduced (e.g. the recovered academic
-     standing is stored as a char array, not a char *, same as
-     studentName always has been).
+   SCOPE: while/for loops, break, continue, arrays, enum, switch,
+   if-statements, logical operators, file and character processing.
+   No user-defined functions (still out of scope), so the whole
+   menu system lives in main() with one while loop and one switch.
 
-     DESIGN NOTES:
-       - Save-then-reload happens automatically in the same run,
-         matching the CCR's Example 1 exactly: the program writes
-         student_records.txt, then immediately reads it back and
-         displays it as a "Recovered Student Record" separate
-         from the normal CCR-001/002/003 report.
-       - Business requirement #7 (let an employee verify the
-         recovered data matches the original) is implemented as
-         an actual in-program comparison, not just two printouts
-         for a human to eyeball. GPA and grades are compared using
-         type casting ((long)(value * 100 + 0.5)) instead of raw
-         double equality, to avoid floating-point rounding issues
-         - this is the newly permitted "type casting" concept.
-         Name and academic standing are compared with strcmp(),
-         using this week's newly permitted character processing.
-       - Academic standing is written to the file as plain text
-         (e.g. "Honors") and read back as text, not recalculated
-         from the recovered GPA. Recalculating would make the
-         standing always match by definition and defeat the point
-         of a real verification step (see Question 8 below).
+   DESIGN: validation errors never terminate the program. Each menu
+   operation prints its error and returns to the menu.
 
-     ASSUMPTIONS (no further customer answers supplied this
-     sprint, so these are my own reasonable defaults per the
-     submission's "Assumptions" requirement):
-       - File name is fixed as "student_records.txt", per the
-         CCR's own error-message example.
-       - The file is overwritten (not appended) each run, since
-         the CCR states the system only manages one student at a
-         time - appending would just duplicate that one record.
-       - The program always reads the file back immediately after
-         saving, matching Example 1.
-       - No blank lines are written between fields, since fscanf
-         does not need them and it keeps the file simple to parse.
-       - If the file cannot be opened at all, the program shows
-         the CCR's exact Example 3 error and exits. If the file
-         opens but its contents are incomplete or malformed, a
-         separate "corrupted file" message is shown instead, to
-         directly answer Question 9 about invalid/incomplete data.
+   BUG-FIX NOTES (revision after bug test):
+     1. INPUT HANDLING: every prompt now reads one whole line with
+        fgets() and parses it with sscanf("%x %c"). A result of
+        exactly 1 means "a value and nothing else on the line".
+        This fixes: leftover characters from a rejected entry being
+        read as the next menu choice, "12abc" / "3.5xyz" / "2.5"
+        being accepted, extra tokens ("3.5 2") spilling into the
+        menu, and Enter on an empty line blocking silently.
+     2. EOF: end of input (Ctrl+D / Ctrl+Z, piped input running out)
+        used to cause an infinite loop of "Invalid menu selection".
+        It now exits cleanly.
+     3. ATOMIC UPDATES: Add Student and Enter Grades now read into
+        temporary variables and only commit on full success. Before,
+        a failed re-add left a NEW ID paired with the OLD name/GPA,
+        and a failed re-entry of grades left half-overwritten grades
+        next to a stale average/highest/lowest.
+     4. NaN GPA: "nan" slipped through the old (gpa < 0 || gpa > 4)
+        range test. The test is now written as an "is within range"
+        check, which rejects NaN.
+     5. LONG NAMES: a name over 49 characters used to leave the
+        remainder in the buffer and corrupt the GPA prompt. The extra
+        is now discarded (name is truncated to 49 characters).
+     6. GRADES: the five copy-pasted blocks are now one for loop
+        (loops are permitted this sprint). Entry also stops at the
+        first course that fails twice instead of continuing to
+        prompt for the remaining courses.
+     7. Save checks the result of fclose() as well as fopen().
+
+   ASSUMPTIONS:
+       - Menu banner matches the CCR example exactly.
+       - Save Student Record only writes the file and prints the
+         two-line success message.
+       - Enter Grades / Save before Add Student returns a message.
+       - Adding a student again replaces the one in memory and
+         resets gradesEntered to false.
+       - Non-numeric / trailing-junk menu input is treated the same
+         as an out-of-range selection.
+       - Student ID of 0 is accepted (unchanged from earlier
+         behavior) even though the message says "positive".
    ============================================================ */
 
 #include <stdbool.h>
@@ -76,466 +66,369 @@ enum AcademicStanding {
 int main(void) {
   /* ---- Constants describing this program ---- */
   const char COURSE_TITLE[] = "Student Information Management System";
-  const char PROGRAMMER_NAME[] = "Samuel Shivarig";
-  const char VERSION_NUMBER[] = "4.0";
+  const char VERSION_NUMBER[] = "5.0";
   const char FILE_NAME[] = "student_records.txt";
 
-  /* ---- Variables to hold the student's data (CCR-001) ---- */
-  long studentID;
-  char studentName[50];
-  double gpa;
+  /* ---- Persistent student data (lives across menu operations) ---- */
+  long studentID = 0;
+  char studentName[50] = "";
+  double gpa = 0.0;
+  enum AcademicStanding standing = ACADEMIC_SUSPENSION;
+  double grades[5] = {0, 0, 0, 0, 0};
+  double averageGrade = 0.0;
+  double highestGrade = 0.0;
+  double lowestGrade = 0.0;
+  bool studentAdded = false;
+  bool gradesEntered = false;
+
+  /* ---- Menu control ---- */
+  int choice = 0;
+  bool choiceIsValid;
+  bool keepRunning = true;
+
+  /* ---- Temporary values (committed only when everything is valid) ---- */
+  long newID = 0;
+  char newName[50];
+  double newGpa = 0.0;
+  enum AcademicStanding newStanding;
+  double newGrades[5];
+
+  /* ---- Line-reading / validation scratch ---- */
+  char line[256];
+  size_t len;
+  int ch;
+  int start;
+  char junk;
+  bool tooLong;
   bool idIsValid;
   bool nameIsValid;
   bool gpaIsValid;
-  char nextChar; /* holds the character right after the ID digits */
-
-  /* ---- Variable to hold academic standing (CCR-003) ---- */
-  enum AcademicStanding standing;
-
-  /* ---- Variables to hold the course grades (CCR-002) ---- */
-  double grades[5];
-  bool gradesAreValid;
   bool gradeOk;
-  double averageGrade;
-  double highestGrade;
-  double lowestGrade;
-
-  /* ---- Variables for saving/loading the record (CCR-004) ---- */
+  bool gradesAreValid;
+  int i;
+  int attempt;
+  double sum;
   FILE *filePtr;
-  long loadedID;
-  char loadedName[50];
-  double loadedGPA;
-  char loadedStanding[30];
-  double loadedGrades[5];
-  bool loadOk;
-  bool idMatches;
-  bool nameMatches;
-  bool gpaMatches;
-  bool standingMatches;
-  bool gradesMatch;
-  bool allMatch;
 
-  /* ---- Program header / welcome message ---- */
-  printf("----------------------------------------\n");
-  printf("%s\n", COURSE_TITLE);
-  printf("Version %s\n", VERSION_NUMBER);
-  printf("Programmer: %s\n", PROGRAMMER_NAME);
-  printf("Welcome to SIMS\n");
-  printf("----------------------------------------\n");
+  while (keepRunning) {
+    printf("----------------------------------------\n");
+    printf("%s\n", COURSE_TITLE);
+    printf("Version %s\n", VERSION_NUMBER);
+    printf("----------------------------------------\n");
+    printf("1. Add Student\n");
+    printf("2. Display Student\n");
+    printf("3. Enter Grades\n");
+    printf("4. Save Student Record\n");
+    printf("5. Exit\n");
+    printf("Selection: ");
 
-  /* ---- Collect student ID (numbers only) ---- */
-  printf("Student ID: ");
-  idIsValid = (scanf("%ld", &studentID) == 1);
-
-  /* Look at the very next character after the digits. If it is a
-     decimal point, the ID is not a whole number and must be
-     rejected (e.g. "123.45" is not a valid Student ID). */
-  nextChar = 0;
-  scanf("%c", &nextChar);
-
-  if (nextChar == '.') {
-    idIsValid = false;
-  }
-
-  /* Student ID cannot be negative. This is a simple range check on
-     the value already read, so it does not need a loop. */
-  if (idIsValid && studentID < 0) {
-    idIsValid = false;
-  }
-
-  /* Discard anything else left on the line (stray letters, extra
-     digits after a rejected decimal, etc.) so it can't corrupt
-     the next read. This uses scanf conversion specifiers, not a
-     loop. If nextChar was already the newline, there is nothing
-     left to discard. */
-  if (nextChar != '\n') {
-    scanf("%*[^\n]");
-    scanf("%*c");
-  }
-
-  if (!idIsValid) {
-    printf("\nError: Student ID must be a positive whole number.\n");
-    printf("Program terminated.\n");
-    return 1;
-  }
-
-  /* ---- Collect student name (must begin with a letter) ---- */
-  printf("Student Name: ");
-  nameIsValid = (scanf(" %49[^\n]", studentName) == 1);
-
-  /* Check that the name starts with a letter. This only checks the
-     first character (not every character in the name), since
-     checking the whole string would require a loop, which is out
-     of scope for this sprint. */
-  if (nameIsValid) {
-    nameIsValid = (studentName[0] >= 'A' && studentName[0] <= 'Z') ||
-                  (studentName[0] >= 'a' && studentName[0] <= 'z');
-  }
-
-  if (!nameIsValid) {
-    printf("\nError: Student Name must begin with a letter.\n");
-    printf("Program terminated.\n");
-    return 1;
-  }
-
-  /* ---- Collect GPA (must be numeric and between 0.00 and 4.00) ----
-     CCR-003 tightens this from CCR-001's "not negative" check to
-     the full valid range, and defines the exact error message
-     (see Example 5 in the CCR). */
-  printf("Current GPA: ");
-  gpaIsValid = (scanf("%lf", &gpa) == 1);
-
-  if (gpaIsValid && (gpa < 0.00 || gpa > 4.00)) {
-    gpaIsValid = false;
-  }
-
-  if (!gpaIsValid) {
-    printf("\nERROR\n");
-    printf("Invalid GPA entered.\n");
-    printf("GPA must be between 0.00 and 4.00.\n");
-    printf("Program terminated.\n");
-    return 1;
-  }
-
-  /* ---- Determine academic standing (CCR-003) ----
-     Cascading from the top down avoids any gap between the
-     table's listed bands (see DESIGN NOTE at the top of this
-     file). Since gpa is already confirmed to be in [0.00, 4.00],
-     the final else covers Academic Suspension correctly. */
-  if (gpa >= 3.50) {
-    standing = HONORS;
-  } else if (gpa >= 2.00) {
-    standing = GOOD_STANDING;
-  } else if (gpa >= 1.00) {
-    standing = ACADEMIC_PROBATION;
-  } else {
-    standing = ACADEMIC_SUSPENSION;
-  }
-
-  /* ---- Collect the five course grades (CCR-002) ----
-     Grades are whole or fractional numbers on a 0-100 scale (see
-     "Answers to Questions for the Customer"). Each grade gets one
-     re-prompt if the first entry is invalid, then is rejected
-     outright. */
-  printf("\nCourse Grades\n");
-  gradesAreValid = true;
-
-  printf("Course 1: ");
-  gradeOk =
-      (scanf("%lf", &grades[0]) == 1) && grades[0] >= 0 && grades[0] <= 100;
-  if (!gradeOk) {
-    scanf("%*[^\n]");
-    scanf("%*c");
-    printf("Invalid grade. Please enter a number between 0 and 100.\n");
-    printf("Course 1: ");
-    gradeOk =
-        (scanf("%lf", &grades[0]) == 1) && grades[0] >= 0 && grades[0] <= 100;
-    if (!gradeOk) {
-      scanf("%*[^\n]");
-      scanf("%*c");
+    if (fgets(line, sizeof line, stdin) == NULL) {
+      /* End of input: exit cleanly instead of looping forever. */
+      printf("\n\nEnd of input reached.\n");
+      printf("Program terminated.\n");
+      break;
     }
-  }
-  if (!gradeOk)
-    gradesAreValid = false;
 
-  printf("Course 2: ");
-  gradeOk =
-      (scanf("%lf", &grades[1]) == 1) && grades[1] >= 0 && grades[1] <= 100;
-  if (!gradeOk) {
-    scanf("%*[^\n]");
-    scanf("%*c");
-    printf("Invalid grade. Please enter a number between 0 and 100.\n");
-    printf("Course 2: ");
-    gradeOk =
-        (scanf("%lf", &grades[1]) == 1) && grades[1] >= 0 && grades[1] <= 100;
-    if (!gradeOk) {
-      scanf("%*[^\n]");
-      scanf("%*c");
+    tooLong = false;
+    len = strlen(line);
+    if (len == sizeof line - 1 && line[len - 1] != '\n') {
+      tooLong = true;
+      while ((ch = getchar()) != '\n' && ch != EOF) {
+      }
     }
-  }
-  if (!gradeOk)
-    gradesAreValid = false;
 
-  printf("Course 3: ");
-  gradeOk =
-      (scanf("%lf", &grades[2]) == 1) && grades[2] >= 0 && grades[2] <= 100;
-  if (!gradeOk) {
-    scanf("%*[^\n]");
-    scanf("%*c");
-    printf("Invalid grade. Please enter a number between 0 and 100.\n");
-    printf("Course 3: ");
-    gradeOk =
-        (scanf("%lf", &grades[2]) == 1) && grades[2] >= 0 && grades[2] <= 100;
-    if (!gradeOk) {
-      scanf("%*[^\n]");
-      scanf("%*c");
+    choiceIsValid = !tooLong && (sscanf(line, "%d %c", &choice, &junk) == 1);
+
+    if (!choiceIsValid) {
+      printf("\nERROR\n");
+      printf("Invalid menu selection.\n");
+      printf("Please choose an option between 1 and 5.\n\n");
+      continue;
     }
-  }
-  if (!gradeOk)
-    gradesAreValid = false;
 
-  printf("Course 4: ");
-  gradeOk =
-      (scanf("%lf", &grades[3]) == 1) && grades[3] >= 0 && grades[3] <= 100;
-  if (!gradeOk) {
-    scanf("%*[^\n]");
-    scanf("%*c");
-    printf("Invalid grade. Please enter a number between 0 and 100.\n");
-    printf("Course 4: ");
-    gradeOk =
-        (scanf("%lf", &grades[3]) == 1) && grades[3] >= 0 && grades[3] <= 100;
-    if (!gradeOk) {
-      scanf("%*[^\n]");
-      scanf("%*c");
+    switch (choice) {
+
+    case 1: {
+      /* ---- Add Student ---- */
+      printf("\n");
+
+      /* Student ID */
+      printf("Student ID: ");
+      idIsValid = false;
+      if (fgets(line, sizeof line, stdin) != NULL) {
+        tooLong = false;
+        len = strlen(line);
+        if (len == sizeof line - 1 && line[len - 1] != '\n') {
+          tooLong = true;
+          while ((ch = getchar()) != '\n' && ch != EOF) {
+          }
+        }
+        idIsValid = !tooLong && (sscanf(line, "%ld %c", &newID, &junk) == 1) &&
+                    newID >= 0;
+      }
+      if (!idIsValid) {
+        printf("\nError: Student ID must be a positive whole number.\n\n");
+        break;
+      }
+
+      /* Student Name */
+      printf("Student Name: ");
+      nameIsValid = false;
+      if (fgets(line, sizeof line, stdin) != NULL) {
+        len = strlen(line);
+        if (len == sizeof line - 1 && line[len - 1] != '\n') {
+          while ((ch = getchar()) != '\n' && ch != EOF) {
+          }
+        }
+        start = 0;
+        while (line[start] == ' ' || line[start] == '\t') {
+          start++;
+        }
+        nameIsValid = (line[start] >= 'A' && line[start] <= 'Z') ||
+                      (line[start] >= 'a' && line[start] <= 'z');
+        if (nameIsValid) {
+          strncpy(newName, line + start, sizeof newName - 1);
+          newName[sizeof newName - 1] = '\0';
+          len = strlen(newName);
+          while (len > 0 &&
+                 (newName[len - 1] == '\n' || newName[len - 1] == '\r' ||
+                  newName[len - 1] == ' ' || newName[len - 1] == '\t')) {
+            newName[--len] = '\0';
+          }
+        }
+      }
+      if (!nameIsValid) {
+        printf("\nError: Student Name must begin with a letter.\n\n");
+        break;
+      }
+
+      /* GPA */
+      printf("Current GPA: ");
+      gpaIsValid = false;
+      if (fgets(line, sizeof line, stdin) != NULL) {
+        tooLong = false;
+        len = strlen(line);
+        if (len == sizeof line - 1 && line[len - 1] != '\n') {
+          tooLong = true;
+          while ((ch = getchar()) != '\n' && ch != EOF) {
+          }
+        }
+        /* Written as an "in range" test so NaN is rejected. */
+        gpaIsValid = !tooLong &&
+                     (sscanf(line, "%lf %c", &newGpa, &junk) == 1) &&
+                     (newGpa >= 0.00 && newGpa <= 4.00);
+      }
+      if (!gpaIsValid) {
+        printf("\nERROR\n");
+        printf("Invalid GPA entered.\n");
+        printf("GPA must be between 0.00 and 4.00.\n\n");
+        break;
+      }
+
+      if (newGpa >= 3.50) {
+        newStanding = HONORS;
+      } else if (newGpa >= 2.00) {
+        newStanding = GOOD_STANDING;
+      } else if (newGpa >= 1.00) {
+        newStanding = ACADEMIC_PROBATION;
+      } else {
+        newStanding = ACADEMIC_SUSPENSION;
+      }
+
+      /* Everything valid: commit. */
+      studentID = newID;
+      strcpy(studentName, newName);
+      gpa = newGpa;
+      standing = newStanding;
+      studentAdded = true;
+      gradesEntered = false; /* new/replaced student has no grades yet */
+
+      printf("\nStudent successfully added.\n\n");
+      break;
     }
-  }
-  if (!gradeOk)
-    gradesAreValid = false;
 
-  printf("Course 5: ");
-  gradeOk =
-      (scanf("%lf", &grades[4]) == 1) && grades[4] >= 0 && grades[4] <= 100;
-  if (!gradeOk) {
-    scanf("%*[^\n]");
-    scanf("%*c");
-    printf("Invalid grade. Please enter a number between 0 and 100.\n");
-    printf("Course 5: ");
-    gradeOk =
-        (scanf("%lf", &grades[4]) == 1) && grades[4] >= 0 && grades[4] <= 100;
-    if (!gradeOk) {
-      scanf("%*[^\n]");
-      scanf("%*c");
+    case 2: {
+      /* ---- Display Student ---- */
+      if (!studentAdded) {
+        printf("\nNo student information has been entered yet.\n");
+        printf("Please choose option 1 to add a student.\n\n");
+        break;
+      }
+
+      printf("\n----------------------------------------\n");
+      printf("Student Summary\n");
+      printf("----------------------------------------\n");
+      printf("Student ID : %ld\n", studentID);
+      printf("Student Name : %s\n", studentName);
+      printf("Current GPA : %.2lf\n", gpa);
+      printf("Academic Standing : ");
+      switch (standing) {
+      case HONORS:
+        printf("Honors\n");
+        break;
+      case GOOD_STANDING:
+        printf("Good Standing\n");
+        break;
+      case ACADEMIC_PROBATION:
+        printf("Academic Probation\n");
+        break;
+      case ACADEMIC_SUSPENSION:
+        printf("Academic Suspension\n");
+        break;
+      }
+
+      if (!gradesEntered) {
+        printf("\nCourse grades have not been entered yet.\n");
+        printf("Please choose option 3 to enter grades.\n\n");
+        break;
+      }
+
+      printf("Course Grades\n");
+      for (i = 0; i < 5; i++) {
+        printf("%.2f\n", grades[i]);
+      }
+      printf("Average Grade : %.2lf\n", averageGrade);
+      printf("Highest Grade : %.2f\n", highestGrade);
+      printf("Lowest Grade : %.2f\n", lowestGrade);
+      printf("\n");
+      break;
     }
-  }
-  if (!gradeOk)
-    gradesAreValid = false;
 
-  if (!gradesAreValid) {
-    printf("\nError: All course grades must be numbers between 0 and 100.\n");
-    printf("Program terminated.\n");
-    return 1;
-  }
+    case 3: {
+      /* ---- Enter Grades ---- */
+      if (!studentAdded) {
+        printf("\nPlease add a student before entering grades.\n\n");
+        break;
+      }
 
-  /* ---- Calculate average, highest, and lowest grade ----
-     No loop is used: with exactly five fixed array elements,
-     the average is a straight-line sum, and the highest/lowest
-     are found by comparing each element in turn. */
-  averageGrade =
-      (grades[0] + grades[1] + grades[2] + grades[3] + grades[4]) / 5.0;
+      printf("\n");
+      gradesAreValid = true;
 
-  highestGrade = grades[0];
-  if (grades[1] > highestGrade)
-    highestGrade = grades[1];
-  if (grades[2] > highestGrade)
-    highestGrade = grades[2];
-  if (grades[3] > highestGrade)
-    highestGrade = grades[3];
-  if (grades[4] > highestGrade)
-    highestGrade = grades[4];
+      for (i = 0; i < 5 && gradesAreValid; i++) {
+        gradeOk = false;
+        attempt = 0;
+        while (attempt < 2 && !gradeOk) {
+          printf("Course %d: ", i + 1);
+          if (fgets(line, sizeof line, stdin) == NULL) {
+            break; /* end of input: leave gradeOk false */
+          }
+          tooLong = false;
+          len = strlen(line);
+          if (len == sizeof line - 1 && line[len - 1] != '\n') {
+            tooLong = true;
+            while ((ch = getchar()) != '\n' && ch != EOF) {
+            }
+          }
+          gradeOk = !tooLong &&
+                    (sscanf(line, "%lf %c", &newGrades[i], &junk) == 1) &&
+                    (newGrades[i] >= 0 && newGrades[i] <= 100);
+          if (!gradeOk && attempt == 0) {
+            printf("Invalid grade. Please enter a number between 0 and 100.\n");
+          }
+          attempt++;
+        }
+        if (!gradeOk) {
+          gradesAreValid = false;
+        }
+      }
 
-  lowestGrade = grades[0];
-  if (grades[1] < lowestGrade)
-    lowestGrade = grades[1];
-  if (grades[2] < lowestGrade)
-    lowestGrade = grades[2];
-  if (grades[3] < lowestGrade)
-    lowestGrade = grades[3];
-  if (grades[4] < lowestGrade)
-    lowestGrade = grades[4];
+      if (!gradesAreValid) {
+        printf("\nError: All course grades must be numbers between 0 and "
+               "100.\n\n");
+        break; /* previous grades (if any) are left untouched */
+      }
 
-  /* ---- Display formatted summary (CCR-001 + CCR-002 + CCR-003) ---- */
-  printf("\n");
-  printf("Student Summary\n");
-  printf("%-18s: %ld\n", "Student ID", studentID);
-  printf("%-18s: %s\n", "Student Name", studentName);
-  printf("%-18s: %.2lf\n", "Current GPA", gpa);
+      sum = 0.0;
+      highestGrade = newGrades[0];
+      lowestGrade = newGrades[0];
+      for (i = 0; i < 5; i++) {
+        grades[i] = newGrades[i];
+        sum += newGrades[i];
+        if (newGrades[i] > highestGrade) {
+          highestGrade = newGrades[i];
+        }
+        if (newGrades[i] < lowestGrade) {
+          lowestGrade = newGrades[i];
+        }
+      }
+      averageGrade = sum / 5.0;
 
-  printf("%-18s: ", "Academic Standing");
-  switch (standing) {
-  case HONORS:
-    printf("Honors\n");
-    break;
-  case GOOD_STANDING:
-    printf("Good Standing\n");
-    break;
-  case ACADEMIC_PROBATION:
-    printf("Academic Probation\n");
-    break;
-  case ACADEMIC_SUSPENSION:
-    printf("Academic Suspension\n");
-    break;
-  }
+      gradesEntered = true;
+      printf("\nGrades successfully recorded.\n\n");
+      break;
+    }
 
-  printf("----------------------------------------\n");
-  printf("Course Grades\n");
-  printf("%-18s: %.2f\n", "Course 1", grades[0]);
-  printf("%-18s: %.2f\n", "Course 2", grades[1]);
-  printf("%-18s: %.2f\n", "Course 3", grades[2]);
-  printf("%-18s: %.2f\n", "Course 4", grades[3]);
-  printf("%-18s: %.2f\n", "Course 5", grades[4]);
-  printf("----------------------------------------\n");
-  printf("%-18s: %.2lf\n", "Average Grade", averageGrade);
-  printf("%-18s: %.2f\n", "Highest Grade", highestGrade);
-  printf("%-18s: %.2f\n", "Lowest Grade", lowestGrade);
+    case 4: {
+      /* ---- Save Student Record ---- */
+      if (!studentAdded) {
+        printf("\nNo student information to save.\n");
+        printf("Please choose option 1 to add a student.\n\n");
+        break;
+      }
+      if (!gradesEntered) {
+        printf("\nCannot save: course grades have not been entered yet.\n");
+        printf("Please choose option 3 to enter grades.\n\n");
+        break;
+      }
 
-  /* ---- Save the student record to a text file (CCR-004) ---- */
-  filePtr = fopen(FILE_NAME, "w");
-  if (filePtr == NULL) {
-    printf("\nERROR\n");
-    printf("Unable to open %s for writing.\n", FILE_NAME);
-    printf(
-        "Please verify that you have permission to write to this location.\n");
-    return 1;
-  }
+      filePtr = fopen(FILE_NAME, "w");
+      if (filePtr == NULL) {
+        printf("\nERROR\n");
+        printf("Unable to open %s for writing.\n", FILE_NAME);
+        printf("Please verify that you have permission to write to this "
+               "location.\n\n");
+        break;
+      }
 
-  fprintf(filePtr, "%ld\n", studentID);
-  fprintf(filePtr, "%s\n", studentName);
-  fprintf(filePtr, "%.2lf\n", gpa);
+      fprintf(filePtr, "%ld\n", studentID);
+      fprintf(filePtr, "%s\n", studentName);
+      fprintf(filePtr, "%.2lf\n", gpa);
 
-  switch (standing) {
-  case HONORS:
-    fprintf(filePtr, "Honors\n");
-    break;
-  case GOOD_STANDING:
-    fprintf(filePtr, "Good Standing\n");
-    break;
-  case ACADEMIC_PROBATION:
-    fprintf(filePtr, "Academic Probation\n");
-    break;
-  case ACADEMIC_SUSPENSION:
-    fprintf(filePtr, "Academic Suspension\n");
-    break;
-  }
+      switch (standing) {
+      case HONORS:
+        fprintf(filePtr, "Honors\n");
+        break;
+      case GOOD_STANDING:
+        fprintf(filePtr, "Good Standing\n");
+        break;
+      case ACADEMIC_PROBATION:
+        fprintf(filePtr, "Academic Probation\n");
+        break;
+      case ACADEMIC_SUSPENSION:
+        fprintf(filePtr, "Academic Suspension\n");
+        break;
+      }
 
-  fprintf(filePtr, "%.2f\n", grades[0]);
-  fprintf(filePtr, "%.2f\n", grades[1]);
-  fprintf(filePtr, "%.2f\n", grades[2]);
-  fprintf(filePtr, "%.2f\n", grades[3]);
-  fprintf(filePtr, "%.2f\n", grades[4]);
+      for (i = 0; i < 5; i++) {
+        fprintf(filePtr, "%.2f\n", grades[i]);
+      }
 
-  fclose(filePtr);
+      if (fclose(filePtr) != 0) {
+        printf("\nERROR\n");
+        printf("A problem occurred while writing %s.\n\n", FILE_NAME);
+        break;
+      }
 
-  printf("\nStudent information successfully saved.\n");
+      printf("\nStudent record successfully saved.\n");
+      printf("%s created.\n\n", FILE_NAME);
+      break;
+    }
 
-  /* ---- Read the student record back from the file (CCR-004) ----
-     The file is always read back immediately after saving, to
-     match the CCR's Example 1. If the file cannot be opened at
-     all, this shows the CCR's exact Example 3 error message. */
-  printf("Reading student information...\n");
+    case 5: {
+      printf("\nThank you for using the\n");
+      printf("Student Information Management System.\n");
+      printf("Program terminated successfully.\n");
+      keepRunning = false;
+      break;
+    }
 
-  filePtr = fopen(FILE_NAME, "r");
-  if (filePtr == NULL) {
-    printf("\nERROR\n");
-    printf("Unable to open %s\n", FILE_NAME);
-    printf("Please verify that the file exists and that you have permission to "
-           "access it.\n");
-    return 1;
-  }
-
-  loadOk = (fscanf(filePtr, "%ld", &loadedID) == 1);
-  if (fscanf(filePtr, " %49[^\n]", loadedName) != 1)
-    loadOk = false;
-  if (fscanf(filePtr, "%lf", &loadedGPA) != 1)
-    loadOk = false;
-  if (fscanf(filePtr, " %29[^\n]", loadedStanding) != 1)
-    loadOk = false;
-  if (fscanf(filePtr, "%lf", &loadedGrades[0]) != 1)
-    loadOk = false;
-  if (fscanf(filePtr, "%lf", &loadedGrades[1]) != 1)
-    loadOk = false;
-  if (fscanf(filePtr, "%lf", &loadedGrades[2]) != 1)
-    loadOk = false;
-  if (fscanf(filePtr, "%lf", &loadedGrades[3]) != 1)
-    loadOk = false;
-  if (fscanf(filePtr, "%lf", &loadedGrades[4]) != 1)
-    loadOk = false;
-
-  fclose(filePtr);
-
-  if (!loadOk) {
-    printf("\nERROR\n");
-    printf("The data file exists but could not be read correctly.\n");
-    printf("The file may be corrupted or incomplete.\n");
-    return 1;
-  }
-
-  printf("File successfully loaded.\n");
-
-  /* ---- Display the recovered record (CCR-004) ----
-     Formatted to match the CCR's Example 1 layout for this
-     section specifically, which is simpler than the live report
-     above (no aligned label columns, grades listed as bare
-     numbers). */
-  printf("\nRecovered Student Record\n");
-  printf("----------------------------------------\n");
-  printf("%s\n", COURSE_TITLE);
-  printf("Version %s\n", VERSION_NUMBER);
-  printf("----------------------------------------\n");
-  printf("Student ID : %ld\n", loadedID);
-  printf("Student Name : %s\n", loadedName);
-  printf("Current GPA : %.2lf\n", loadedGPA);
-  printf("Academic Standing : %s\n", loadedStanding);
-  printf("Course Grades\n");
-  printf("%.2f\n", loadedGrades[0]);
-  printf("%.2f\n", loadedGrades[1]);
-  printf("%.2f\n", loadedGrades[2]);
-  printf("%.2f\n", loadedGrades[3]);
-  printf("%.2f\n", loadedGrades[4]);
-  printf("Average Grade : %.2lf\n",
-         (loadedGrades[0] + loadedGrades[1] + loadedGrades[2] +
-          loadedGrades[3] + loadedGrades[4]) /
-             5.0);
-  printf("Highest Grade : %.2f\n", highestGrade);
-  printf("Lowest Grade : %.2f\n", lowestGrade);
-
-  /* ---- Verify the recovered data matches the original (CCR-004) ----
-     GPA and grades use type casting to compare as whole hundredths
-     instead of raw doubles, avoiding floating-point rounding
-     issues. Name and standing use strcmp() for exact text match. */
-  idMatches = (studentID == loadedID);
-  nameMatches = (strcmp(studentName, loadedName) == 0);
-  gpaMatches = ((long)(gpa * 100 + 0.5) == (long)(loadedGPA * 100 + 0.5));
-
-  switch (standing) {
-  case HONORS:
-    standingMatches = (strcmp(loadedStanding, "Honors") == 0);
-    break;
-  case GOOD_STANDING:
-    standingMatches = (strcmp(loadedStanding, "Good Standing") == 0);
-    break;
-  case ACADEMIC_PROBATION:
-    standingMatches = (strcmp(loadedStanding, "Academic Probation") == 0);
-    break;
-  case ACADEMIC_SUSPENSION:
-    standingMatches = (strcmp(loadedStanding, "Academic Suspension") == 0);
-    break;
-  default:
-    standingMatches = false;
-    break;
-  }
-
-  gradesMatch = true;
-  if ((long)(grades[0] * 100 + 0.5) != (long)(loadedGrades[0] * 100 + 0.5))
-    gradesMatch = false;
-  if ((long)(grades[1] * 100 + 0.5) != (long)(loadedGrades[1] * 100 + 0.5))
-    gradesMatch = false;
-  if ((long)(grades[2] * 100 + 0.5) != (long)(loadedGrades[2] * 100 + 0.5))
-    gradesMatch = false;
-  if ((long)(grades[3] * 100 + 0.5) != (long)(loadedGrades[3] * 100 + 0.5))
-    gradesMatch = false;
-  if ((long)(grades[4] * 100 + 0.5) != (long)(loadedGrades[4] * 100 + 0.5))
-    gradesMatch = false;
-
-  allMatch =
-      +idMatches && nameMatches && gpaMatches && standingMatches && gradesMatch;
-
-  printf("\n----------------------------------------\n");
-  printf("Verification\n");
-  printf("----------------------------------------\n");
-  if (allMatch) {
-    printf("The recovered data matches the original entry exactly.\n");
-  } else {
-    printf("WARNING: The recovered data does NOT match the original entry.\n");
+    default: {
+      printf("\nERROR\n");
+      printf("Invalid menu selection.\n");
+      printf("Please choose an option between 1 and 5.\n\n");
+      break;
+    }
+    }
   }
 
   return 0;
